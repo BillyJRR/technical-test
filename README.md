@@ -26,10 +26,11 @@ Flujo de Datos
   . Cuando recibe un mensaje de SQS, el lambda actualiza el estado del appointment a "COMPLETED" en DynamoDB.
 
 4. Endpoints
-4.1 Crear Appointment
-    . Método: POST
-    . Ruta: /appointments
-    . Request Body:
+   
+    4.1 Crear Appointment
+        . Método: POST
+        . Ruta: /appointments
+        . Request Body:
 
       ```
       {
@@ -53,7 +54,7 @@ Flujo de Datos
           }
         }
   
-    . Uso: Copiar el valor de token y usarlo en el header Authorization: Bearer <token> para llamar a los endpoints de appointments.
+    . Copiar el valor de token y usarlo en el header Authorization: Bearer <token> para llamar a los endpoints de appointments.
 
     4.2 Crear Appointment
       . Método: POST
@@ -80,7 +81,7 @@ Flujo de Datos
           }
         }
 
-    4.2 Listar Appointments por insuredId
+    4.3 Listar Appointments por insuredId
       . Método: GET
       . Ruta: /appointments/{insuredId}
       . Response:
@@ -97,28 +98,28 @@ Flujo de Datos
           ...
         ]
 
-5. Variables de Entorno
-  | Variable             | Descripción                                                                                                    |
-  | -------------------- | -------------------------------------------------------------------------------------------------------------- |
-  | `USERS_TABLE`        | Nombre de la tabla DynamoDB que almacena los usuarios registrados.                                             |
-  | `APPOINTMENTS_TABLE` | Nombre de la tabla DynamoDB donde se guardan los appointments, incluyendo su estado (`PENDING` o `COMPLETED`). |
-  | `SCHEDULES_TABLE`    | Nombre de la tabla DynamoDB que contiene los horarios disponibles para citas.                                  |
-  | `CENTERS_TABLE`      | Nombre de la tabla DynamoDB que guarda los centros médicos o clínicas y el país (`PE` o `CL`).                               |
-  | `SPECIALTIES_TABLE`  | Nombre de la tabla DynamoDB que contiene las especialidades médicas disponibles.                               |
-  | `MEDICS_TABLE`       | Nombre de la tabla DynamoDB con los datos de los médicos.                                                      |
-  | `INSUREDS_TABLE`     | Nombre de la tabla DynamoDB que guarda información de los asegurados.                                          |
-  | `USER_AWS_REGION`    | Región de AWS donde se desplegarán los recursos (ej. `us-east-1`).                                             |
-  | `JWT_SECRET`         | Clave secreta utilizada para validar y firmar los tokens JWT en la autenticación.                              |
-  | `MYSQL_HOST_PE`      | Host del RDS MySQL para la base de datos de Perú.                                                              |
-  | `MYSQL_USER_PE`      | Usuario de acceso al RDS MySQL de Perú.                                                                        |
-  | `MYSQL_PASSWORD_PE`  | Contraseña del usuario para el RDS MySQL de Perú.                                                              |
-  | `MYSQL_DB_PE`        | Nombre de la base de datos en MySQL para Perú.                                                                 |
-  | `MYSQL_HOST_CL`      | Host del RDS MySQL para la base de datos de Chile.                                                             |
-  | `MYSQL_USER_CL`      | Usuario de acceso al RDS MySQL de Chile.                                                                       |
-  | `MYSQL_PASSWORD_CL`  | Contraseña del usuario para el RDS MySQL de Chile.                                                             |
-  | `MYSQL_DB_CL`        | Nombre de la base de datos en MySQL para Chile.                                                                |
-  
-    . Tener encuenta: Las demás variables (SNS, SQS, EventBridge) se generan automáticamente al desplegar el stack con Serverless, por eso no necesitas agregarlas manualmente en el .env.
+6. Variables de Entorno (.env)
+     ```htm
+     . Variable              . Descripción
+      USERS_TABLE         = Nombre de la tabla DynamoDB que almacena los usuarios registrados.
+      APPOINTMENTS_TABLE  = Nombre de la tabla DynamoDB donde se guardan los appointments, incluyendo su estado (PENDING o COMPLETED).
+      SCHEDULES_TABLE     = Nombre de la tabla DynamoDB que contiene los horarios disponibles para citas.
+      CENTERS_TABLE       = Nombre de la tabla DynamoDB que guarda los centros médicos o clínicas y el país (PE o CL).
+      SPECIALTIES_TABLE   = Nombre de la tabla DynamoDB que contiene las especialidades médicas disponibles.
+      MEDICS_TABLE        = Nombre de la tabla DynamoDB con los datos de los médicos.
+      INSUREDS_TABLE      = Nombre de la tabla DynamoDB que guarda información de los asegurados.
+      USER_AWS_REGION     = Región de AWS donde se desplegarán los recursos (ej. us-east-1).
+      JWT_SECRET          = Clave secreta utilizada para validar y firmar los tokens JWT en la autenticación.
+      MYSQL_HOST_PE       = Host del RDS MySQL para la base de datos de Perú.
+      MYSQL_USER_PE       = Usuario de acceso al RDS MySQL de Perú.
+      MYSQL_PASSWORD_PE   = Contraseña del usuario para el RDS MySQL de Perú.
+      MYSQL_DB_PE         = Nombre de la base de datos en MySQL para Perú.
+      MYSQL_HOST_CL       = Host del RDS MySQL para la base de datos de Chile.
+      MYSQL_USER_CL       = Usuario de acceso al RDS MySQL de Chile.
+      MYSQL_PASSWORD_CL   = Contraseña del usuario para el RDS MySQL de Chile.
+      MYSQL_DB_CL         = Nombre de la base de datos en MySQL para Chile.
+    ```
+. Las demás variables (SNS, SQS, EventBridge) se generan automáticamente al desplegar el stack con Serverless, por eso no necesitas agregarlas manualmente en el .env.
 
 6. Instalación y Despliegue
   . Clonar repositorio:
@@ -155,8 +156,11 @@ La función que procesa los appointments desde SQS y guarda en RDS MySQL está c
 **El flujo general sigue funcionando correctamente incluso con esta línea comentada.**
 
 Para habilitarla:
+
   . Crear la base de datos en MySQL tanto para PE y CL según la configuración de .env.
+  
   . Crear la tabla correspondiente (appointments o como esté definida).
+  
   . La estructura de la tabla appointments:
 
   ```php
