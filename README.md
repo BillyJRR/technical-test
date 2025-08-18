@@ -176,3 +176,26 @@ Para habilitarla:
   ```
 
   . Descomentar la línea await repo.createFromSqs(appointment); en el código.
+
+9. Buenas prácticas aplicadas
+
+    1. **Arquitectura**
+       - Se utilizó **Arquitectura Limpia (Clean Architecture)** para separar la lógica de negocio del resto de la aplicación.  
+       - La estructura del proyecto está organizada en capas:
+         - `domain` → entidades e interfaces (core del negocio).  
+         - `application` → casos de uso que implementan la lógica de negocio.  
+         - `infrastructure` → adaptadores externos como bases de datos y servicios de seguridad.  
+         - `interface` → controladores/Lambdas que exponen la aplicación al mundo externo.  
+       - Esta separación permite **desacoplar la lógica de negocio de la infraestructura**, facilitando mantenimiento y pruebas.
+    
+    2. **Principios SOLID aplicados**
+       - **SRP (Single Responsibility Principle):** Cada clase tiene una única responsabilidad.  
+       - **OCP (Open/Closed Principle):** Las clases y servicios están diseñadas para extenderse sin modificar la lógica existente.  
+       - **DIP (Dependency Inversion Principle):** Los controladores y casos de uso dependen de interfaces (puertos), no de implementaciones concretas.  
+    
+    3. **Patrón de diseño**
+       - Se aplicó el patrón **Arquitectura Hexagonal (Ports & Adapters)**:  
+         - Los **puertos** son las interfaces definidas en `domain/repositories`.  
+         - Los **adaptadores** son las implementaciones externas en `infrastructure` (ej. DynamoDB, JWT).  
+         - Los controladores (`interface`) interactúan con la aplicación a través de los casos de uso sin acoplarse a la infraestructura.
+
