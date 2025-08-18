@@ -1,0 +1,239 @@
+
+org: billyboy
+app: tecnical-test
+
+service: technical-test
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+
+  iam:
+    role:
+      statements:
+        # DynamoDB
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:Scan
+          Resource:
+            - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*
+
+        # SNS
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource:
+            - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*
+
+        # SQS
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource:
+            - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:SQS_PE
+            - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:SQS_CL
+            - !GetAtt UpdateAppointmentQueue.Arn
+          
+        # EventBridge
+        - Effect: Allow
+          Action:
+            - events:PutEvents
+          Resource: "*"
+
+  httpApi:
+    cors:
+      allowedOrigins:
+        - 'http://front-technical-test.s3-website-us-east-1.amazonaws.com'
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+
+  environment:
+    USERS_TABLE: ${env:USERS_TABLE}
+    APPOINTMENTS_TABLE: ${env:APPOINTMENTS_TABLE}
+    SCHEDULES_TABLE: ${env:SCHEDULES_TABLE}
+    CENTERS_TABLE: ${env:CENTERS_TABLE}
+    SPECIALTIES_TABLE: ${env:SPECIALTIES_TABLE}
+    MEDICS_TABLE: ${env:MEDICS_TABLE}
+    INSUREDS_TABLE: ${env:INSUREDS_TABLE}
+    USER_AWS_REGION: ${env:USER_AWS_REGION}
+    JWT_SECRET: ${env:JWT_SECRET}
+    MYSQL_HOST_PE: ${env:MYSQL_HOST_PE}
+    MYSQL_USER_PE: ${env:MYSQL_USER_PE}
+    MYSQL_PASSWORD_PE: ${env:MYSQL_PASSWORD_PE}
+    MYSQL_DB_PE: ${env:MYSQL_DB_PE}
+    MYSQL_HOST_CL: ${env:MYSQL_HOST_CL}
+    MYSQL_USER_CL: ${env:MYSQL_USER_CL}
+    MYSQL_PASSWORD_CL: ${env:MYSQL_PASSWORD_CL}
+    MYSQL_DB_CL: ${env:MYSQL_DB_CL}
+    SNS_TOPIC_PE: !Ref SNSTopicPE
+    SNS_TOPIC_CL: !Ref SNSTopicCL
+    SQS_PE_URL: !GetAtt SQSPE.QueueUrl
+    SQS_CL_URL: !GetAtt SQSCL.QueueUrl
+    EVENT_BUS_NAME: !Ref AppointmentEventBus
+
+functions:
+  login:
+    handler: handlers/login.handler
+    events:
+      - httpApi:
+          path: /login
+          method: post
+
+  appointment:
+    handler: handlers/appointment.handler
+    events:
+      - httpApi:
+          path: /appointments
+          method: post
+      - httpApi:
+          path: /appointments/{insuredId}
+          method: get
+      - sqs:
+          arn: !GetAtt UpdateAppointmentQueue.Arn
+
+  listSchedules:
+    handler: handlers/schedule.handler
+    events:
+      - httpApi:
+          path: /schedules
+          method: get
+    
+  appointment_pe:
+    handler: handlers/appointment_pe.handler
+    events:
+      - sqs:
+          arn: !GetAtt SQSPE.Arn
+
+  appointment_cl:
+    handler: handlers/appointment_cl.handler
+    events:
+      - sqs:
+          arn: !GetAtt SQSCL.Arn
+
+resources:
+  Resources:
+    # SNS Topics (PE y CL)
+    SNSTopicPE:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: SNS_PE
+
+    SNSTopicCL:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: SNS_CL
+
+    # SQS (PE y CL)
+    SQSPE:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: SQS_PE
+
+    SQSCL:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: SQS_CL
+
+    SNSPESubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn: !Ref SNSTopicPE
+        Protocol: sqs
+        Endpoint: !GetAtt SQSPE.Arn
+
+    SNSCLSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn: !Ref SNSTopicCL
+        Protocol: sqs
+        Endpoint: !GetAtt SQSCL.Arn
+    
+    SQSPEPolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - !Ref SQSPE
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: "SQS:SendMessage"
+              Resource: !GetAtt SQSPE.Arn
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: !Ref SNSTopicPE
+
+    SQSCLPolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - !Ref SQSCL
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: "SQS:SendMessage"
+              Resource: !GetAtt SQSCL.Arn
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: !Ref SNSTopicCL
+
+    # EventBridge EventBus
+    AppointmentEventBus:
+      Type: AWS::Events::EventBus
+      Properties:
+        Name: ${self:service}-eventbus
+
+    # Cola SQS para updateAppointment
+    UpdateAppointmentQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-update-appointments
+    
+    # Rule para enviar eventos AppointmentCompleted al SQS
+    AppointmentCompletedRule:
+      Type: AWS::Events::Rule
+      Properties:
+        EventBusName: !Ref AppointmentEventBus
+        EventPattern:
+          source:
+            - "appointments"
+          detail-type:
+            - "AppointmentCompleted"
+        Targets:
+          - Arn: !GetAtt UpdateAppointmentQueue.Arn
+            Id: "UpdateAppointmentTarget"
+    
+    UpdateAppointmentQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - !Ref UpdateAppointmentQueue
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: events.amazonaws.com
+              Action: SQS:SendMessage
+              Resource: !GetAtt UpdateAppointmentQueue.Arn
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: !GetAtt AppointmentCompletedRule.Arn
+
+plugins:
+  - serverless-offline

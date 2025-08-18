@@ -1,0 +1,140 @@
+openapi: 3.0.1
+info:
+  title: Appointments API
+  version: 1.0.0
+  description: API serverless para gestión de appointments de asegurados.
+
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com
+    variables:
+      apiId:
+        default: tu-api-id
+      region:
+        default: us-east-1
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Appointment:
+      type: object
+      properties:
+        appointmentId:
+          type: string
+        insuredId:
+          type: string
+        scheduleId:
+          type: string
+        countryISO:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+paths:
+  /login:
+    post:
+      summary: Login de usuario para obtener token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login exitoso, retorna token JWT y datos del usuario y asegurado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                      email:
+                        type: string
+                  insured:
+                    type: object
+                    properties:
+                      insuredId:
+                        type: string
+                      fullName:
+                        type: string
+
+  /appointments:
+    post:
+      summary: Crear un nuevo appointment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - insuredId
+                - scheduleId
+                - countryISO
+              properties:
+                insuredId:
+                  type: string
+                scheduleId:
+                  type: string
+                countryISO:
+                  type: string
+      responses:
+        '200':
+          description: Appointment creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  appointment:
+                    $ref: '#/components/schemas/Appointment'
+
+  /appointments/{insuredId}:
+    get:
+      summary: Listar appointments por insuredId
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: insuredId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
